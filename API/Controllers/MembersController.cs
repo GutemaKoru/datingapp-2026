@@ -8,14 +8,8 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class MembersController : ControllerBase
+    public class MembersController(AppDbContext dbContext) : BaseController
     {
-        private readonly AppDbContext dbContext;
-
-        public MembersController(AppDbContext dbContext)
-        {
-            this.dbContext = dbContext;
-        }
 
         [HttpGet]
         public async Task<ActionResult<IReadOnlyList<AppUser>>> GetMembers()
