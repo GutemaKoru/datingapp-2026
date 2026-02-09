@@ -14,8 +14,7 @@ public class AccountController(AppDbContext context) : BaseController
     [HttpPost("register")]
     public async Task<ActionResult<AppUser>> Register(RegisterDto registerDto)
     {
-        var user = await context.Users.FirstOrDefaultAsync(x => x.Email == registerDto.Email);
-        if (user != null) return BadRequest("Email Taken");
+        if (await EmailExists(registerDto.Email)) return BadRequest("Email Already Taken");
 
         //Hash Password
         using var hmac = new HMACSHA512();
@@ -34,5 +33,31 @@ public class AccountController(AppDbContext context) : BaseController
         await context.SaveChangesAsync();
 
         return userDto;
+    }
+
+    [HttpPost("login")]
+    public async Task<ActionResult<AppUser>> Login(LoginDto loginDto)
+    {
+        var user = await context.Users.SingleOrDefaultAsync(x=>x.Email == loginDto.Email);
+        if(user is null) return Unauthorized("Invalid Email");
+
+
+        using var hmac = new HMACSHA512(user.PasswordSalt);
+        var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password));
+
+        for (var i = 0; i < computedHash.Length; i++)
+        {
+            if (computedHash[i] != user.PasswordHash[i])
+            {
+                return Unauthorized("Invalid Password"); // For Dev only
+            }
+        }
+
+        return user;
+    }
+
+    private async Task<bool> EmailExists(string email)
+    {
+        return await context.Users.AnyAsync(x => x.Email.ToLower() == email.ToLower());
     }
 }
